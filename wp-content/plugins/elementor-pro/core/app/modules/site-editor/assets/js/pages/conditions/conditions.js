@@ -13,9 +13,10 @@ export default function Conditions( props ) {
 	if ( ! template ) {
 		return <div>{ __( 'Not Found', 'elementor-pro' ) }</div>;
 	}
+
 	return (
 		<section className="e-site-editor-conditions">
-			<BackButton/>
+			<BackButton />
 			<div className="e-site-editor-conditions__header">
 				<img
 					className="e-site-editor-conditions__header-image"
@@ -23,16 +24,16 @@ export default function Conditions( props ) {
 					alt={ __( 'Import template', 'elementor-pro' ) }
 				/>
 				<Heading variant="h1" tag="h1">
-					{ __( 'Where Do You Want to Display Your Template?', 'elementor-pro' ) }
+					{ __( 'Where do you want to display your template?', 'elementor-pro' ) }
 				</Heading>
 				<Text variant="p">
 					{ __( 'Set the conditions that determine where your template is used throughout your site.', 'elementor-pro' ) }
-					<br/>
+					<br />
 					{ __( 'For example, choose \'Entire Site\' to display the template across your site.', 'elementor-pro' ) }
 				</Text>
 			</div>
 			<ConditionsProvider currentTemplate={ template } onConditionsSaved={ updateTemplateItemState }>
-				<ConditionsRows/>
+				<ConditionsRows onAfterSave={ () => history.back() } loadPortal={ true } />
 			</ConditionsProvider>
 		</section>
 	);

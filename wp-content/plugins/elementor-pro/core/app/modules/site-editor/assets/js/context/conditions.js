@@ -10,6 +10,11 @@ export class ConditionsProvider extends BaseContext {
 		children: PropTypes.any.isRequired,
 		currentTemplate: PropTypes.object.isRequired,
 		onConditionsSaved: PropTypes.func.isRequired,
+		validateConflicts: PropTypes.bool,
+	};
+
+	static defaultProps = {
+		validateConflicts: true,
 	};
 
 	static actions = {
@@ -28,13 +33,15 @@ export class ConditionsProvider extends BaseContext {
 	/**
 	 * ConditionsProvider constructor.
 	 *
-	 * @param props
+	 * @param {any} props
 	 */
 	constructor( props ) {
 		super( props );
 
 		this.state = {
 			...this.state,
+
+			conditionsFetched: false,
 
 			conditions: {},
 
@@ -55,13 +62,22 @@ export class ConditionsProvider extends BaseContext {
 		this.executeAction( ConditionsProvider.actions.FETCH_CONFIG, () => ConditionsConfig.create() )
 			.then( ( conditionsConfig ) => this.conditionsConfig = conditionsConfig )
 			.then( this.normalizeConditionsState.bind( this ) )
-			.then( this.setSubIdTitles.bind( this ) );
+			.then( () => {
+				this.setSubIdTitles.bind( this );
+				this.setState( { conditionsFetched: true } );
+			} );
+	}
+
+	componentDidUpdate( prevProps, prevState ) {
+		if ( ! prevState.conditionsFetched && this.state.conditionsFetched ) {
+			this.setSubIdTitles();
+		}
 	}
 
 	/**
 	 * Execute a request to save the template conditions.
 	 *
-	 * @returns {*}
+	 * @return {any} Saved conditions
 	 */
 	saveConditions() {
 		const conditions = Object.values( this.state.conditions )
@@ -69,7 +85,7 @@ export class ConditionsProvider extends BaseContext {
 
 		return this.executeAction(
 			ConditionsProvider.actions.SAVE,
-			() => $e.data.update( TemplatesConditions.signature, { conditions }, { id: this.props.currentTemplate.id } )
+			() => $e.data.update( TemplatesConditions.signature, { conditions }, { id: this.props.currentTemplate.id } ),
 		).then( () => {
 			const contextConditions = Object.values( this.state.conditions )
 				.map( ( condition ) => condition.forContext() );
@@ -86,7 +102,7 @@ export class ConditionsProvider extends BaseContext {
 	 * Check for conflicts in the server and mark the condition if there
 	 * is a conflict.
 	 *
-	 * @param condition
+	 * @param {any} condition
 	 */
 	checkConflicts( condition ) {
 		return this.executeAction(
@@ -94,17 +110,17 @@ export class ConditionsProvider extends BaseContext {
 			() => $e.data.get( TemplatesConditionsConflicts.signature, {
 				post_id: this.props.currentTemplate.id,
 				condition: condition.clone().toString(),
-			} )
+			} ),
 		).then( ( response ) =>
-			this.updateConditionItemState( condition.id, { conflictErrors: Object.values( response.data ) }, false )
+			this.updateConditionItemState( condition.id, { conflictErrors: Object.values( response.data ) }, false ),
 		);
 	}
 
 	/**
 	 * Fetching subId titles.
 	 *
-	 * @param condition
-	 * @returns {Promise<unknown>}
+	 * @param {any} condition
+	 * @return {Promise<unknown>} Titles
 	 */
 	fetchSubIdsTitles( condition ) {
 		return new Promise( ( resolve ) => {
@@ -135,7 +151,7 @@ export class ConditionsProvider extends BaseContext {
 					options: this.conditionsConfig.getOptions(),
 					subOptions: this.conditionsConfig.getSubOptions( condition.name ),
 					subIdAutocomplete: this.conditionsConfig.getSubIdAutocomplete( condition.sub ),
-					supIdOptions: condition.subId ? [ { value: condition.subId, label: condition.subId } ] : [],
+					subIdOptions: condition.subId ? [ { value: condition.subId, label: '' } ] : [],
 				} );
 
 				return {
@@ -165,7 +181,7 @@ export class ConditionsProvider extends BaseContext {
 							label: Object.values( response )[ 0 ],
 							value: condition.subId,
 						} ],
-					}, false )
+					}, false ),
 				);
 		} );
 	}
@@ -173,9 +189,9 @@ export class ConditionsProvider extends BaseContext {
 	/**
 	 * Update state of specific condition item.
 	 *
-	 * @param id
-	 * @param args
-	 * @param shouldCheckConflicts
+	 * @param {any}     id
+	 * @param {any}     args
+	 * @param {boolean} shouldCheckConflicts
 	 */
 	updateConditionItemState( id, args, shouldCheckConflicts = true ) {
 		if ( args.name ) {
@@ -207,7 +223,7 @@ export class ConditionsProvider extends BaseContext {
 	/**
 	 * Remove a condition item from the state.
 	 *
-	 * @param id
+	 * @param {any} id
 	 */
 	removeConditionItemInState( id ) {
 		this.updateConditionsState( ( prev ) => {
@@ -222,7 +238,7 @@ export class ConditionsProvider extends BaseContext {
 	/**
 	 * Add a new condition item into the state.
 	 *
-	 * @param shouldCheckConflicts
+	 * @param {boolean} shouldCheckConflicts
 	 */
 	createConditionItemInState( shouldCheckConflicts = true ) {
 		const defaultCondition = this.props.currentTemplate.defaultCondition,
@@ -245,8 +261,8 @@ export class ConditionsProvider extends BaseContext {
 	/**
 	 * Find a condition item from the conditions state.
 	 *
-	 * @param id
-	 * @returns {Condition|null}
+	 * @param {any} id
+	 * @return {Condition|null} Condition
 	 */
 	findConditionItemInState( id ) {
 		return Object.values( this.state.conditions ).find( ( c ) => c.id === id );
@@ -255,19 +271,19 @@ export class ConditionsProvider extends BaseContext {
 	/**
 	 * Update the whole conditions state.
 	 *
-	 * @param callback
-	 * @returns {Promise<*>}
+	 * @param {Function} callback
+	 * @return {Promise<undefined>} Conditions state
 	 */
 	updateConditionsState( callback ) {
 		return new Promise( ( resolve ) =>
-			this.setState( ( prev ) => ( { conditions: callback( prev.conditions ) } ), resolve )
+			this.setState( ( prev ) => ( { conditions: callback( prev.conditions ) } ), resolve ),
 		);
 	}
 
 	/**
 	 * Renders the provider.
 	 *
-	 * @returns {*}
+	 * @return {any} Element
 	 */
 	render() {
 		if ( this.state.action.current === ConditionsProvider.actions.FETCH_CONFIG ) {
